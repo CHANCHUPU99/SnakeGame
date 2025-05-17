@@ -1,69 +1,56 @@
-using System;
-using System.IO.Ports;
 using UnityEngine;
+using System.IO.Ports;
+using System.Collections;
 
-public class ArduinoController : MonoBehaviour {
-    public static ArduinoController instance;
-    public static event Action OnButtonPressed;
+public class Test : MonoBehaviour {
+    [Header("Serial Settings")]
+    public string portName = "COM4";
+    public int baudRate = 115200;   // <-- 115200
 
-    SerialPort serialPort;
-    string portName = "COM4"; // Asegúrate que coincide con el puerto de tu Arduino R4 Minima
-    int baudRate = 9600;
-
-    private void Awake() {
-        if (instance != null && instance != this) {
-            Destroy(gameObject);
-            return;
-        }
-        instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
+    private SerialPort port;
+    private bool ready = false;
 
     void Start() {
+        // 1) Lista puertos disponibles
+        Debug.Log("Puertos disponibles: " + string.Join(", ", SerialPort.GetPortNames()));
+
+        // 2) Configura el puerto
+        port = new SerialPort(portName, baudRate) {
+            ReadTimeout = 200,
+            DtrEnable = true,   // fuerza DTR para levantar el CDC
+            RtsEnable = true
+        };
+
+        // 3) Ábrelo
         try {
-            serialPort = new SerialPort(portName, baudRate);
-            serialPort.ReadTimeout = 500;
-            serialPort.Open();
-            Debug.Log("Conectado al puerto " + portName);
-        } catch (Exception e) {
-            Debug.LogError("Error al abrir el puerto: " + e.Message);
+            port.Open();
+            Debug.Log($"Puerto {portName} abierto a {baudRate}bps");
+            StartCoroutine(EnableReadingAfterDelay(1.0f));
+        } catch (System.Exception e) {
+            Debug.LogError($"Error abriendo {portName}: {e.Message}");
         }
+    }
+
+    IEnumerator EnableReadingAfterDelay(float secs) {
+        Debug.Log($"Esperando {secs}s para que Arduino arranque...");
+        yield return new WaitForSeconds(secs);
+        ready = true;
+        Debug.Log("Listo para leer datos");
     }
 
     void Update() {
-        // Enviar comando para alternar LED con tecla Space
-        if (Input.GetKeyDown(KeyCode.Space)) {
-            SendCommand("toggle_led");
-        }
+        if (!ready || port == null || !port.IsOpen) return;
 
-
-        // Leer datos enviados desde Arduino
-        if (serialPort != null && serialPort.IsOpen) {
-            try {
-                string data = serialPort.ReadLine();
-                Debug.Log("Mensaje desde Arduino: " + data);
-
-                if (data == "BOTON") {
-                    OnButtonPressed?.Invoke(); // Si quieres que algo ocurra cuando se presione físicamente
-                }
-            } catch (TimeoutException) {
-                // No hacer nada si no hay datos
-            } catch (Exception e) {
-                Debug.LogError("Error leyendo datos: " + e.Message);
-            }
-        }
-    }
-
-    void SendCommand(string command) {
-        if (serialPort != null && serialPort.IsOpen) {
-            serialPort.WriteLine(command);
-            Debug.Log("Comando enviado a Arduino: " + command);
+        try {
+            string line = port.ReadLine().Trim();
+            Debug.Log($"Dato recibido: [{line}]");
+            if (line == "1") Debug.Log("Estoy Vivo");
+        } catch (System.TimeoutException) { /* no llegó nada */ } catch (System.Exception e) {
+            Debug.LogError($"Error lectura: {e.Message}");
         }
     }
 
     void OnApplicationQuit() {
-        if (serialPort != null && serialPort.IsOpen) {
-            serialPort.Close();
-        }
+        if (port != null && port.IsOpen) port.Close();
     }
 }
