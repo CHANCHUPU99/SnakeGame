@@ -685,7 +685,7 @@ GameObject:
   - component: {fileID: 1415942571}
   - component: {fileID: 1415942570}
   m_Layer: 0
-  m_Name: TEstArduino
+  m_Name: TestArduino
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -703,7 +703,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3aa35ee85a2ec8c48b4762d4dc2722a8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  portName: COM4
+  portName: COM3
   baudRate: 115200
 --- !u!4 &1415942571
 Transform:
